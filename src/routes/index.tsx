@@ -1,10 +1,12 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { fetchAllFeeds, FEED_SOURCES, type FeedsPayload, type NewsItem, type FeedResult } from "@/lib/feeds";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchAllFeeds, fetchFeeds, FEED_SOURCES, type FeedsPayload } from "@/lib/feeds";
 import { LiveClock } from "@/components/LiveClock";
 import { Ticker } from "@/components/Ticker";
 import { SourcePanel } from "@/components/SourcePanel";
 import { NewsRow } from "@/components/NewsRow";
+import { ManageFeedsModal } from "@/components/ManageFeedsModal";
+import { useFeedSources } from "@/hooks/useFeedSources";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -13,7 +15,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Real-time aggregated news monitoring from 7 Indonesian and international RSS sources. Command-center style dashboard.",
+          "Real-time aggregated news monitoring from multiple RSS sources. Command-center style dashboard with custom feed support.",
       },
       { property: "og:title", content: "NEWS COMMAND CENTER" },
       { property: "og:description", content: "Live RSS news monitoring dashboard." },
@@ -27,29 +29,61 @@ const REFRESH_MS = 60_000;
 
 function Dashboard() {
   const initial = Route.useLoaderData() as FeedsPayload;
-  const router = useRouter();
+  const { sources: configuredSources, removed, hydrated, addCustom, remove, restoreDefault, resetAll } =
+    useFeedSources();
+
   const [data, setData] = useState<FeedsPayload>(initial);
   const [activeSource, setActiveSource] = useState<string | "ALL">("ALL");
   const [query, setQuery] = useState("");
   const [countdown, setCountdown] = useState(REFRESH_MS / 1000);
+  const [isFetching, setIsFetching] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const lastSigRef = useRef<string>("");
 
+  const refresh = async (sources: typeof configuredSources) => {
+    if (sources.length === 0) {
+      setData({ fetchedAt: Date.now(), sources: [] });
+      return;
+    }
+    setIsFetching(true);
+    try {
+      const next = await fetchFeeds({ data: { sources } });
+      setData(next);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // Re-fetch when source list changes (after hydration)
   useEffect(() => {
-    setData(initial);
+    if (!hydrated) return;
+    const sig = JSON.stringify(configuredSources.map((s) => s.id + s.url));
+    if (sig === lastSigRef.current) return;
+    lastSigRef.current = sig;
+    // First hydration with no customizations: keep loader data
+    const defaultSig = JSON.stringify(FEED_SOURCES.map((s) => s.id + s.url));
+    if (sig === defaultSig && data === initial) {
+      setCountdown(REFRESH_MS / 1000);
+      return;
+    }
+    refresh(configuredSources);
     setCountdown(REFRESH_MS / 1000);
-  }, [initial]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, configuredSources]);
 
   useEffect(() => {
     const tick = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
-          router.invalidate();
+          refresh(configuredSources);
           return REFRESH_MS / 1000;
         }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configuredSources]);
 
   const allItems = useMemo(() => {
     return data.sources
@@ -145,20 +179,30 @@ function Dashboard() {
         <div className="grid grid-cols-12 gap-4">
           {/* SOURCES */}
           <aside className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-3">
-            <div className="flex items-center justify-between px-1">
+            <div className="flex items-center justify-between gap-2 px-1">
               <h2 className="text-[11px] tracking-widest text-cyan glow-cyan font-bold">
                 ▍ SOURCES [{data.sources.length}]
+                {isFetching && <span className="ml-2 text-amber blink">◌ SYNC</span>}
               </h2>
-              <button
-                onClick={() => setActiveSource("ALL")}
-                className={`text-[10px] tracking-widest px-2 py-0.5 border ${
-                  activeSource === "ALL"
-                    ? "border-cyan text-cyan glow-cyan"
-                    : "border-panel-border text-muted-foreground hover:text-cyan hover:border-cyan"
-                } transition-colors`}
-              >
-                SHOW ALL
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setManageOpen(true)}
+                  className="text-[10px] tracking-widest px-2 py-0.5 border border-amber text-amber glow-amber hover:bg-amber hover:text-background transition-colors"
+                  title="Add or remove RSS sources"
+                >
+                  + MANAGE
+                </button>
+                <button
+                  onClick={() => setActiveSource("ALL")}
+                  className={`text-[10px] tracking-widest px-2 py-0.5 border ${
+                    activeSource === "ALL"
+                      ? "border-cyan text-cyan glow-cyan"
+                      : "border-panel-border text-muted-foreground hover:text-cyan hover:border-cyan"
+                  } transition-colors`}
+                >
+                  SHOW ALL
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
               {data.sources.map((feed) => (
@@ -187,7 +231,7 @@ function Dashboard() {
                   <span className="text-[10px] text-muted-foreground tracking-widest">
                     {activeSource === "ALL"
                       ? "ALL SOURCES"
-                      : FEED_SOURCES.find((s) => s.id === activeSource)?.name}{" "}
+                      : configuredSources.find((s) => s.id === activeSource)?.name ?? activeSource}{" "}
                     · {filtered.length} items
                   </span>
                 </div>
@@ -235,6 +279,17 @@ function Dashboard() {
           ━━━━━ NEWS COMMAND CENTER · CLASSIFIED FEED · AUTHORIZED ACCESS ONLY ━━━━━
         </footer>
       </div>
+
+      <ManageFeedsModal
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        sources={configuredSources}
+        removed={removed}
+        onAdd={addCustom}
+        onRemove={remove}
+        onRestore={restoreDefault}
+        onResetAll={resetAll}
+      />
     </div>
   );
 }

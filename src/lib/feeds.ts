@@ -8,7 +8,7 @@ export type FeedSource = {
   category: string;
 };
 
-export const FEED_SOURCES: FeedSource[] = [
+export const DEFAULT_FEED_SOURCES: FeedSource[] = [
   { id: "antara", name: "ANTARA EN", url: "https://en.antaranews.com/rss/news.xml", category: "INTL" },
   { id: "sindo", name: "SINDONEWS", url: "https://www.sindonews.com/feed", category: "NAT" },
   { id: "viva", name: "VIVA", url: "https://www.viva.co.id/get/all", category: "NAT" },
@@ -17,6 +17,9 @@ export const FEED_SOURCES: FeedSource[] = [
   { id: "tribun", name: "TRIBUNNEWS", url: "https://www.tribunnews.com/rss", category: "NAT" },
   { id: "fajar", name: "FAJAR", url: "https://fajar.co.id/feed", category: "REG" },
 ];
+
+/** @deprecated Use DEFAULT_FEED_SOURCES; kept for backwards compatibility. */
+export const FEED_SOURCES = DEFAULT_FEED_SOURCES;
 
 export type NewsItem = {
   id: string;
@@ -182,9 +185,33 @@ export type FeedsPayload = {
   sources: FeedResult[];
 };
 
+import { z } from "zod";
+
+const feedSourceSchema = z.object({
+  id: z.string().min(1).max(64).regex(/^[a-zA-Z0-9_-]+$/),
+  name: z.string().min(1).max(64),
+  url: z.string().url().max(500).refine((u) => /^https?:\/\//i.test(u), "must be http(s)"),
+  category: z.string().min(1).max(16),
+});
+
+const inputSchema = z.object({
+  sources: z.array(feedSourceSchema).min(1).max(50),
+});
+
+export const fetchFeeds = createServerFn({ method: "POST" })
+  .inputValidator((input: unknown) => inputSchema.parse(input))
+  .handler(async ({ data }): Promise<FeedsPayload> => {
+    const results = await Promise.all(data.sources.map(fetchSource));
+    return {
+      fetchedAt: Date.now(),
+      sources: results,
+    };
+  });
+
+/** Initial loader call with default sources only (custom sources live in localStorage). */
 export const fetchAllFeeds = createServerFn({ method: "GET" }).handler(
   async (): Promise<FeedsPayload> => {
-    const results = await Promise.all(FEED_SOURCES.map(fetchSource));
+    const results = await Promise.all(DEFAULT_FEED_SOURCES.map(fetchSource));
     return {
       fetchedAt: Date.now(),
       sources: results,
