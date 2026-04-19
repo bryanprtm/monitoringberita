@@ -7,6 +7,7 @@ import { SourcePanel } from "@/components/SourcePanel";
 import { NewsRow } from "@/components/NewsRow";
 import { ManageFeedsModal } from "@/components/ManageFeedsModal";
 import { useFeedSources } from "@/hooks/useFeedSources";
+import logoUrl from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -129,6 +130,13 @@ function Dashboard() {
           <span className="corner-br" />
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
+              <div className="w-12 h-12 flex items-center justify-center bg-background/40 border border-amber/40 p-1">
+                <img
+                  src={logoUrl}
+                  alt="Logo Polri"
+                  className="w-full h-full object-contain drop-shadow-[0_0_6px_oklch(0.78_0.17_75/0.6)]"
+                />
+              </div>
               <div className="w-10 h-10 border-2 border-cyan flex items-center justify-center">
                 <span className="text-cyan glow-cyan text-lg font-bold">◉</span>
               </div>
