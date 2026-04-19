@@ -177,10 +177,17 @@ async function fetchSource(source: FeedSource): Promise<FeedResult> {
   }
 }
 
-export const fetchAllFeeds = createServerFn({ method: "GET" }).handler(async () => {
-  const results = await Promise.all(FEED_SOURCES.map(fetchSource));
-  return {
-    fetchedAt: Date.now(),
-    sources: results,
-  };
-});
+export type FeedsPayload = {
+  fetchedAt: number;
+  sources: FeedResult[];
+};
+
+export const fetchAllFeeds = createServerFn({ method: "GET" }).handler(
+  async (): Promise<FeedsPayload> => {
+    const results = await Promise.all(FEED_SOURCES.map(fetchSource));
+    return {
+      fetchedAt: Date.now(),
+      sources: results,
+    };
+  }
+);
