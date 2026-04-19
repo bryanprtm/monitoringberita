@@ -179,20 +179,30 @@ function Dashboard() {
         <div className="grid grid-cols-12 gap-4">
           {/* SOURCES */}
           <aside className="col-span-12 lg:col-span-4 xl:col-span-3 space-y-3">
-            <div className="flex items-center justify-between px-1">
+            <div className="flex items-center justify-between gap-2 px-1">
               <h2 className="text-[11px] tracking-widest text-cyan glow-cyan font-bold">
                 ▍ SOURCES [{data.sources.length}]
+                {isFetching && <span className="ml-2 text-amber blink">◌ SYNC</span>}
               </h2>
-              <button
-                onClick={() => setActiveSource("ALL")}
-                className={`text-[10px] tracking-widest px-2 py-0.5 border ${
-                  activeSource === "ALL"
-                    ? "border-cyan text-cyan glow-cyan"
-                    : "border-panel-border text-muted-foreground hover:text-cyan hover:border-cyan"
-                } transition-colors`}
-              >
-                SHOW ALL
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => setManageOpen(true)}
+                  className="text-[10px] tracking-widest px-2 py-0.5 border border-amber text-amber glow-amber hover:bg-amber hover:text-background transition-colors"
+                  title="Add or remove RSS sources"
+                >
+                  + MANAGE
+                </button>
+                <button
+                  onClick={() => setActiveSource("ALL")}
+                  className={`text-[10px] tracking-widest px-2 py-0.5 border ${
+                    activeSource === "ALL"
+                      ? "border-cyan text-cyan glow-cyan"
+                      : "border-panel-border text-muted-foreground hover:text-cyan hover:border-cyan"
+                  } transition-colors`}
+                >
+                  SHOW ALL
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
               {data.sources.map((feed) => (
@@ -221,7 +231,7 @@ function Dashboard() {
                   <span className="text-[10px] text-muted-foreground tracking-widest">
                     {activeSource === "ALL"
                       ? "ALL SOURCES"
-                      : FEED_SOURCES.find((s) => s.id === activeSource)?.name}{" "}
+                      : configuredSources.find((s) => s.id === activeSource)?.name ?? activeSource}{" "}
                     · {filtered.length} items
                   </span>
                 </div>
@@ -269,6 +279,17 @@ function Dashboard() {
           ━━━━━ NEWS COMMAND CENTER · CLASSIFIED FEED · AUTHORIZED ACCESS ONLY ━━━━━
         </footer>
       </div>
+
+      <ManageFeedsModal
+        open={manageOpen}
+        onClose={() => setManageOpen(false)}
+        sources={configuredSources}
+        removed={removed}
+        onAdd={addCustom}
+        onRemove={remove}
+        onRestore={restoreDefault}
+        onResetAll={resetAll}
+      />
     </div>
   );
 }
