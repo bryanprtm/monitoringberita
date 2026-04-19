@@ -1,10 +1,12 @@
-import { createFileRoute, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
-import { fetchAllFeeds, FEED_SOURCES, type FeedsPayload, type NewsItem, type FeedResult } from "@/lib/feeds";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { fetchAllFeeds, fetchFeeds, FEED_SOURCES, type FeedsPayload } from "@/lib/feeds";
 import { LiveClock } from "@/components/LiveClock";
 import { Ticker } from "@/components/Ticker";
 import { SourcePanel } from "@/components/SourcePanel";
 import { NewsRow } from "@/components/NewsRow";
+import { ManageFeedsModal } from "@/components/ManageFeedsModal";
+import { useFeedSources } from "@/hooks/useFeedSources";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -13,7 +15,7 @@ export const Route = createFileRoute("/")({
       {
         name: "description",
         content:
-          "Real-time aggregated news monitoring from 7 Indonesian and international RSS sources. Command-center style dashboard.",
+          "Real-time aggregated news monitoring from multiple RSS sources. Command-center style dashboard with custom feed support.",
       },
       { property: "og:title", content: "NEWS COMMAND CENTER" },
       { property: "og:description", content: "Live RSS news monitoring dashboard." },
@@ -27,29 +29,61 @@ const REFRESH_MS = 60_000;
 
 function Dashboard() {
   const initial = Route.useLoaderData() as FeedsPayload;
-  const router = useRouter();
+  const { sources: configuredSources, custom, removed, hydrated, addCustom, remove, restoreDefault, resetAll } =
+    useFeedSources();
+
   const [data, setData] = useState<FeedsPayload>(initial);
   const [activeSource, setActiveSource] = useState<string | "ALL">("ALL");
   const [query, setQuery] = useState("");
   const [countdown, setCountdown] = useState(REFRESH_MS / 1000);
+  const [isFetching, setIsFetching] = useState(false);
+  const [manageOpen, setManageOpen] = useState(false);
+  const lastSigRef = useRef<string>("");
 
+  const refresh = async (sources: typeof configuredSources) => {
+    if (sources.length === 0) {
+      setData({ fetchedAt: Date.now(), sources: [] });
+      return;
+    }
+    setIsFetching(true);
+    try {
+      const next = await fetchFeeds({ data: { sources } });
+      setData(next);
+    } finally {
+      setIsFetching(false);
+    }
+  };
+
+  // Re-fetch when source list changes (after hydration)
   useEffect(() => {
-    setData(initial);
+    if (!hydrated) return;
+    const sig = JSON.stringify(configuredSources.map((s) => s.id + s.url));
+    if (sig === lastSigRef.current) return;
+    lastSigRef.current = sig;
+    // First hydration with no customizations: keep loader data
+    const defaultSig = JSON.stringify(FEED_SOURCES.map((s) => s.id + s.url));
+    if (sig === defaultSig && data === initial) {
+      setCountdown(REFRESH_MS / 1000);
+      return;
+    }
+    refresh(configuredSources);
     setCountdown(REFRESH_MS / 1000);
-  }, [initial]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, configuredSources]);
 
   useEffect(() => {
     const tick = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
-          router.invalidate();
+          refresh(configuredSources);
           return REFRESH_MS / 1000;
         }
         return c - 1;
       });
     }, 1000);
     return () => clearInterval(tick);
-  }, [router]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [configuredSources]);
 
   const allItems = useMemo(() => {
     return data.sources
