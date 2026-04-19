@@ -1,6 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { fetchAllFeeds, FEED_SOURCES } from "@/lib/feeds";
+import { fetchAllFeeds, FEED_SOURCES, type FeedsPayload, type NewsItem, type FeedResult } from "@/lib/feeds";
 import { LiveClock } from "@/components/LiveClock";
 import { Ticker } from "@/components/Ticker";
 import { SourcePanel } from "@/components/SourcePanel";
@@ -26,9 +26,9 @@ export const Route = createFileRoute("/")({
 const REFRESH_MS = 60_000;
 
 function Dashboard() {
-  const initial = Route.useLoaderData();
+  const initial = Route.useLoaderData() as FeedsPayload;
   const router = useRouter();
-  const [data, setData] = useState(initial);
+  const [data, setData] = useState<FeedsPayload>(initial);
   const [activeSource, setActiveSource] = useState<string | "ALL">("ALL");
   const [query, setQuery] = useState("");
   const [countdown, setCountdown] = useState(REFRESH_MS / 1000);
