@@ -7,6 +7,7 @@ import { SourcePanel } from "@/components/SourcePanel";
 import { NewsRow } from "@/components/NewsRow";
 import { ManageFeedsModal } from "@/components/ManageFeedsModal";
 import { useFeedSources } from "@/hooks/useFeedSources";
+import logoUrl from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
   head: () => ({
