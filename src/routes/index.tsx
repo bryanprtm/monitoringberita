@@ -29,7 +29,7 @@ const REFRESH_MS = 60_000;
 
 function Dashboard() {
   const initial = Route.useLoaderData() as FeedsPayload;
-  const { sources: configuredSources, custom, removed, hydrated, addCustom, remove, restoreDefault, resetAll } =
+  const { sources: configuredSources, removed, hydrated, addCustom, remove, restoreDefault, resetAll } =
     useFeedSources();
 
   const [data, setData] = useState<FeedsPayload>(initial);
