@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { fetchFeeds, type FeedsPayload } from "@/lib/feeds";
 import { LiveClock } from "@/components/LiveClock";
@@ -154,6 +153,20 @@ function Dashboard() {
             </div>
           </div>
           <div className="flex items-center gap-6">
+            <nav className="flex items-center gap-2">
+              <Link
+                to="/"
+                className="text-[10px] tracking-widest px-2 py-1 border border-cyan text-cyan glow-cyan"
+              >
+                RSS FEED
+              </Link>
+              <Link
+                to="/live"
+                className="text-[10px] tracking-widest px-2 py-1 border border-panel-border text-muted-foreground hover:text-danger hover:border-danger transition-colors"
+              >
+                LIVE TV ▸
+              </Link>
+            </nav>
             <div className="text-xs">
               <div className="text-muted-foreground tracking-widest text-[10px]">SYSTEM</div>
               <div className={`font-bold tracking-widest ${statusColor}`}>{systemStatus}</div>
