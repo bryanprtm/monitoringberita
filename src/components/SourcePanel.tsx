@@ -53,8 +53,8 @@ export function SourcePanel({
         </div>
         <div>
           <div className="text-muted-foreground">SYNC</div>
-          <div className="text-foreground">
-            {new Date(feed.fetchedAt).toLocaleTimeString("en-GB", { hour12: false })}
+          <div className="text-foreground" suppressHydrationWarning>
+            {new Date(feed.fetchedAt).toLocaleTimeString("en-GB", { hour12: false, timeZone: "UTC" })}
           </div>
         </div>
       </div>
