@@ -36,6 +36,8 @@ export function ManageFeedsModal({
   const [category, setCategory] = useState("CUSTOM");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   if (!open) return null;
 
@@ -156,6 +158,11 @@ export function ManageFeedsModal({
                 ▸ ACTIVE SOURCES [{sources.length}]
               </h3>
             </div>
+            {removeError && (
+              <div className="text-[11px] text-danger glow-danger tracking-wider border border-danger/40 bg-danger/5 px-2 py-1.5 mb-2">
+                ✕ {removeError}
+              </div>
+            )}
             <ul className="space-y-1.5">
               {sources.map((s) => {
                 const isDefault = (s as FeedSource & { isDefault?: boolean }).isDefault ?? false;
@@ -173,13 +180,23 @@ export function ManageFeedsModal({
                       {isDefault ? "DEFAULT" : "CUSTOM"}
                     </span>
                     <button
+                      disabled={removingId === s.id}
                       onClick={async () => {
-                        try { await onRemove(s.id); }
-                        catch (err) { setError(err instanceof Error ? err.message : "Failed to remove"); }
+                        const ok = window.confirm(`Hapus source "${s.name}"?`);
+                        if (!ok) return;
+                        setRemoveError(null);
+                        setRemovingId(s.id);
+                        try {
+                          await onRemove(s.id);
+                        } catch (err) {
+                          setRemoveError(err instanceof Error ? err.message : "Failed to remove");
+                        } finally {
+                          setRemovingId(null);
+                        }
                       }}
-                      className="text-[10px] text-danger hover:bg-danger hover:text-background border border-danger/60 px-2 py-0.5 tracking-widest shrink-0 transition-colors"
+                      className="text-[10px] text-danger hover:bg-danger hover:text-background border border-danger/60 px-2 py-0.5 tracking-widest shrink-0 transition-colors disabled:opacity-50"
                     >
-                      REMOVE
+                      {removingId === s.id ? "..." : "REMOVE"}
                     </button>
                   </li>
                 );
