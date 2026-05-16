@@ -1,12 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { fetchAllFeeds, fetchFeeds, FEED_SOURCES, type FeedsPayload } from "@/lib/feeds";
+import { fetchFeeds, type FeedsPayload } from "@/lib/feeds";
 import { LiveClock } from "@/components/LiveClock";
 import { Ticker } from "@/components/Ticker";
 import { SourcePanel } from "@/components/SourcePanel";
 import { NewsRow } from "@/components/NewsRow";
 import { ManageFeedsModal } from "@/components/ManageFeedsModal";
 import { useFeedSources } from "@/hooks/useFeedSources";
+import { useAuth } from "@/hooks/useAuth";
 import logoUrl from "@/assets/logo.png";
 
 export const Route = createFileRoute("/")({
@@ -22,18 +24,23 @@ export const Route = createFileRoute("/")({
       { property: "og:description", content: "Live RSS news monitoring dashboard." },
     ],
   }),
-  loader: () => fetchAllFeeds(),
   component: Dashboard,
 });
 
 const REFRESH_MS = 60_000;
 
 function Dashboard() {
-  const initial = Route.useLoaderData() as FeedsPayload;
+  const { session, profile, loading: authLoading, signOut } = useAuth();
+  const nav = useNavigate();
+
+  useEffect(() => {
+    if (!authLoading && !session) nav({ to: "/login" });
+  }, [authLoading, session, nav]);
+
   const { sources: configuredSources, removed, hydrated, addCustom, remove, restoreDefault, resetAll } =
     useFeedSources();
 
-  const [data, setData] = useState<FeedsPayload>(initial);
+  const [data, setData] = useState<FeedsPayload>({ fetchedAt: Date.now(), sources: [] });
   const [activeSource, setActiveSource] = useState<string | "ALL">("ALL");
   const [query, setQuery] = useState("");
   const [countdown, setCountdown] = useState(REFRESH_MS / 1000);
@@ -58,21 +65,17 @@ function Dashboard() {
   // Re-fetch when source list changes (after hydration)
   useEffect(() => {
     if (!hydrated) return;
+    if (!session) return;
     const sig = JSON.stringify(configuredSources.map((s) => s.id + s.url));
     if (sig === lastSigRef.current) return;
     lastSigRef.current = sig;
-    // First hydration with no customizations: keep loader data
-    const defaultSig = JSON.stringify(FEED_SOURCES.map((s) => s.id + s.url));
-    if (sig === defaultSig && data === initial) {
-      setCountdown(REFRESH_MS / 1000);
-      return;
-    }
     refresh(configuredSources);
     setCountdown(REFRESH_MS / 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated, configuredSources]);
+  }, [hydrated, configuredSources, session]);
 
   useEffect(() => {
+    if (!session) return;
     const tick = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
@@ -84,7 +87,7 @@ function Dashboard() {
     }, 1000);
     return () => clearInterval(tick);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [configuredSources]);
+  }, [configuredSources, session]);
 
   const allItems = useMemo(() => {
     return data.sources
@@ -162,6 +165,23 @@ function Dashboard() {
               </div>
             </div>
             <LiveClock />
+            {session && (
+              <div className="flex items-center gap-2 border-l border-panel-border pl-4">
+                <div className="text-xs">
+                  <div className="text-muted-foreground tracking-widest text-[10px]">OPERATOR</div>
+                  <div className="text-cyan font-bold tracking-widest">
+                    {profile?.display_name || profile?.username || "—"}
+                  </div>
+                </div>
+                <button
+                  onClick={() => signOut()}
+                  className="text-[10px] tracking-widest px-2 py-1 border border-danger/60 text-danger hover:bg-danger hover:text-background transition-colors"
+                  title="Sign out"
+                >
+                  LOGOUT
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -273,8 +293,8 @@ function Dashboard() {
               <div className="panel-header border-t border-b-0 px-4 py-2 flex items-center justify-between text-[10px] tracking-widest text-muted-foreground">
                 <span>
                   LAST SYNC{" "}
-                  <span className="text-cyan">
-                    {new Date(data.fetchedAt).toLocaleTimeString("en-GB", { hour12: false })}
+                  <span className="text-cyan" suppressHydrationWarning>
+                    {new Date(data.fetchedAt).toLocaleTimeString("en-GB", { hour12: false, timeZone: "UTC" })}
                   </span>
                 </span>
                 <span>EOF · END OF TRANSMISSION</span>
