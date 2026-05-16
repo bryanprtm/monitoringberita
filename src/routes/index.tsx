@@ -232,7 +232,7 @@ function Dashboard() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3 max-h-[calc(100vh-360px)] min-h-[500px] overflow-y-auto pr-1">
               {data.sources.map((feed) => (
                 <SourcePanel
                   key={feed.sourceId}
