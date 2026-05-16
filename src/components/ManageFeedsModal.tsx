@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { z } from "zod";
-import { DEFAULT_FEED_SOURCES, type FeedSource } from "@/lib/feeds";
+import type { FeedSource } from "@/lib/feeds";
 
 const formSchema = z.object({
   name: z.string().trim().min(1, "Name required").max(64, "Max 64 chars"),
@@ -18,30 +18,28 @@ type Props = {
   onClose: () => void;
   sources: FeedSource[];
   removed: string[];
-  onAdd: (src: { name: string; url: string; category: string }) => void;
-  onRemove: (id: string) => void;
-  onRestore: (id: string) => void;
-  onResetAll: () => void;
+  onAdd: (src: { name: string; url: string; category: string }) => Promise<void> | void;
+  onRemove: (id: string) => Promise<void> | void;
+  onRestore: (id: string) => Promise<void> | void;
+  onResetAll: () => Promise<void> | void;
 };
 
 export function ManageFeedsModal({
   open,
   onClose,
   sources,
-  removed,
   onAdd,
   onRemove,
-  onRestore,
-  onResetAll,
 }: Props) {
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [category, setCategory] = useState("CUSTOM");
   const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   if (!open) return null;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     const parsed = formSchema.safeParse({ name, url, category });
@@ -53,13 +51,18 @@ export function ManageFeedsModal({
       setError("Feed URL already exists");
       return;
     }
-    onAdd(parsed.data);
-    setName("");
-    setUrl("");
-    setCategory("CUSTOM");
+    setBusy(true);
+    try {
+      await onAdd(parsed.data);
+      setName("");
+      setUrl("");
+      setCategory("CUSTOM");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add source");
+    } finally {
+      setBusy(false);
+    }
   };
-
-  const removedDefaults = DEFAULT_FEED_SOURCES.filter((s) => removed.includes(s.id));
 
   return (
     <div
@@ -134,12 +137,13 @@ export function ManageFeedsModal({
               <div className="flex items-center gap-2">
                 <button
                   type="submit"
-                  className="text-[11px] tracking-widest font-bold px-4 py-1.5 border border-cyan text-cyan glow-cyan hover:bg-cyan hover:text-background transition-colors"
+                  disabled={busy}
+                  className="text-[11px] tracking-widest font-bold px-4 py-1.5 border border-cyan text-cyan glow-cyan hover:bg-cyan hover:text-background transition-colors disabled:opacity-50"
                 >
-                  + DEPLOY SOURCE
+                  {busy ? "◌ DEPLOYING..." : "+ DEPLOY SOURCE"}
                 </button>
                 <span className="text-[10px] text-muted-foreground tracking-wider">
-                  Saved locally · synced on next refresh
+                  Synced to database · shared with all operators
                 </span>
               </div>
             </form>
@@ -151,18 +155,10 @@ export function ManageFeedsModal({
               <h3 className="text-[11px] tracking-widest text-amber glow-amber font-bold">
                 ▸ ACTIVE SOURCES [{sources.length}]
               </h3>
-              <button
-                onClick={() => {
-                  if (confirm("Reset all sources to defaults? Custom feeds will be lost.")) onResetAll();
-                }}
-                className="text-[10px] tracking-widest text-muted-foreground hover:text-danger border border-panel-border hover:border-danger px-2 py-1 transition-colors"
-              >
-                RESET ALL
-              </button>
             </div>
             <ul className="space-y-1.5">
               {sources.map((s) => {
-                const isDefault = DEFAULT_FEED_SOURCES.some((d) => d.id === s.id);
+                const isDefault = (s as FeedSource & { isDefault?: boolean }).isDefault ?? false;
                 return (
                   <li
                     key={s.id}
@@ -177,7 +173,10 @@ export function ManageFeedsModal({
                       {isDefault ? "DEFAULT" : "CUSTOM"}
                     </span>
                     <button
-                      onClick={() => onRemove(s.id)}
+                      onClick={async () => {
+                        try { await onRemove(s.id); }
+                        catch (err) { setError(err instanceof Error ? err.message : "Failed to remove"); }
+                      }}
                       className="text-[10px] text-danger hover:bg-danger hover:text-background border border-danger/60 px-2 py-0.5 tracking-widest shrink-0 transition-colors"
                     >
                       REMOVE
@@ -187,33 +186,6 @@ export function ManageFeedsModal({
               })}
             </ul>
           </section>
-
-          {/* REMOVED DEFAULTS */}
-          {removedDefaults.length > 0 && (
-            <section>
-              <h3 className="text-[11px] tracking-widest text-muted-foreground font-bold mb-3">
-                ▸ DISABLED DEFAULTS [{removedDefaults.length}]
-              </h3>
-              <ul className="space-y-1.5">
-                {removedDefaults.map((s) => (
-                  <li
-                    key={s.id}
-                    className="flex items-center gap-2 text-xs font-mono border border-panel-border/40 px-2 py-1.5 opacity-60"
-                  >
-                    <span className="text-[10px] w-14 shrink-0">[{s.category}]</span>
-                    <span className="font-bold w-36 shrink-0 truncate">{s.name}</span>
-                    <span className="truncate flex-1">{s.url}</span>
-                    <button
-                      onClick={() => onRestore(s.id)}
-                      className="text-[10px] text-success hover:bg-success hover:text-background border border-success/60 px-2 py-0.5 tracking-widest shrink-0 transition-colors"
-                    >
-                      RESTORE
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
         </div>
       </div>
     </div>
