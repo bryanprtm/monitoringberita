@@ -14,12 +14,10 @@ export const Route = createFileRoute("/login")({
 });
 
 function LoginPage() {
-  const { signIn, signUp, session, loading } = useAuth();
+  const { signIn, session, loading } = useAuth();
   const nav = useNavigate();
-  const [mode, setMode] = useState<"login" | "signup">("login");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
@@ -32,18 +30,11 @@ function LoginPage() {
     setError(null);
     setBusy(true);
     try {
-      if (mode === "login") {
-        await signIn(username, password);
-      } else {
-        await signUp(username, password, displayName);
-      }
+      await signIn(username, password);
       nav({ to: "/" });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Authentication failed";
-      // Translate common Supabase errors
       if (msg.includes("Invalid login")) setError("Username atau password salah");
-      else if (msg.includes("already registered") || msg.includes("User already"))
-        setError("Username sudah terdaftar");
       else setError(msg);
     } finally {
       setBusy(false);
@@ -75,21 +66,8 @@ function LoginPage() {
             </p>
           </div>
 
-          <div className="grid grid-cols-2 gap-2 mb-5">
-            {(["login", "signup"] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                onClick={() => { setMode(m); setError(null); }}
-                className={`text-[11px] tracking-widest py-1.5 border transition-colors ${
-                  mode === m
-                    ? "border-cyan text-cyan glow-cyan"
-                    : "border-panel-border text-muted-foreground hover:text-cyan hover:border-cyan"
-                }`}
-              >
-                {m === "login" ? "▸ LOGIN" : "▸ REGISTER"}
-              </button>
-            ))}
+          <div className="mb-5 text-center text-[11px] tracking-widest py-1.5 border border-cyan text-cyan glow-cyan">
+            ▸ LOGIN
           </div>
 
           <form onSubmit={submit} className="space-y-4">
@@ -105,25 +83,13 @@ function LoginPage() {
               />
             </label>
 
-            {mode === "signup" && (
-              <label className="block">
-                <span className="text-[10px] tracking-widest text-muted-foreground">DISPLAY NAME (opsional)</span>
-                <input
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value.slice(0, 64))}
-                  placeholder="Operator 01"
-                  className="mt-1 w-full bg-input/60 border border-panel-border focus:border-cyan outline-none px-3 py-2 text-sm font-mono tracking-wider transition-colors"
-                />
-              </label>
-            )}
-
             <label className="block">
               <span className="text-[10px] tracking-widest text-muted-foreground">PASSWORD</span>
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
+              autoComplete="current-password"
                 required
                 minLength={6}
                 placeholder="••••••"
@@ -142,7 +108,7 @@ function LoginPage() {
               disabled={busy}
               className="w-full text-xs tracking-[0.25em] font-bold px-4 py-2.5 border border-cyan text-cyan glow-cyan hover:bg-cyan hover:text-background transition-colors disabled:opacity-50"
             >
-              {busy ? "◌ AUTHENTICATING..." : mode === "login" ? "▶ ACCESS GRANTED" : "▶ REGISTER OPERATOR"}
+              {busy ? "◌ AUTHENTICATING..." : "▶ ACCESS GRANTED"}
             </button>
           </form>
 
