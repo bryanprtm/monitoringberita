@@ -86,6 +86,7 @@ function LivePage() {
   const { sources, hydrated, add, update, remove } = useYoutubeSources();
   const [manageOpen, setManageOpen] = useState(false);
   const [editing, setEditing] = useState<YoutubeSource | null>(null);
+  const [expanded, setExpanded] = useState<YoutubeSource | null>(null);
 
   const cells = useMemo(() => sources, [sources]);
 
@@ -174,8 +175,11 @@ function LivePage() {
           </button>
         </div>
 
-        {/* 6-COLUMN GRID */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {/* AUTO-FIT GRID */}
+        <div
+          className="grid gap-3"
+          style={{ gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))" }}
+        >
           {cells.length === 0 && hydrated && (
             <div className="col-span-full panel relative p-12 text-center text-muted-foreground tracking-widest text-xs">
               ◇ NO STREAMS · ADD A YOUTUBE URL TO BEGIN ◇
@@ -203,16 +207,27 @@ function LivePage() {
                     </span>
                   </div>
                 </div>
-                <div className="relative bg-black aspect-video">
+                <div
+                  className="relative bg-black aspect-video cursor-zoom-in"
+                  onClick={() => embed && setExpanded(s)}
+                  title="Klik untuk perbesar & aktifkan suara"
+                >
                   {embed ? (
-                    <iframe
-                      src={embed}
-                      title={s.name}
-                      className="absolute inset-0 w-full h-full"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      loading="lazy"
-                    />
+                    <>
+                      <iframe
+                        src={embed}
+                        title={s.name}
+                        className="absolute inset-0 w-full h-full pointer-events-none"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 flex items-end justify-end p-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
+                        <span className="text-[9px] tracking-widest text-cyan border border-cyan/60 px-1.5 py-0.5 bg-background/70">
+                          ⛶ EXPAND
+                        </span>
+                      </div>
+                    </>
                   ) : (
                     <div className="absolute inset-0 flex items-center justify-center text-[10px] text-danger tracking-widest p-2 text-center">
                       ✕ INVALID URL
@@ -277,6 +292,73 @@ function LivePage() {
           }}
         />
       )}
+
+      {expanded && (
+        <ExpandedPlayer source={expanded} onClose={() => setExpanded(null)} />
+      )}
+    </div>
+  );
+}
+
+function ExpandedPlayer({
+  source,
+  onClose,
+}: {
+  source: YoutubeSource;
+  onClose: () => void;
+}) {
+  const embed = toEmbedUnmuted(source.url);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/90 backdrop-blur-sm"
+      onClick={onClose}
+    >
+      <div
+        className="panel relative w-full max-w-6xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="corner-tl" />
+        <span className="corner-tr" />
+        <span className="corner-bl" />
+        <span className="corner-br" />
+        <div className="panel-header px-4 py-2 flex items-center justify-between">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-[10px] text-danger glow-danger blink">●</span>
+            <span className="text-[10px] tracking-widest text-cyan">[{source.category}]</span>
+            <span className="text-xs font-bold tracking-wider text-foreground truncate">
+              {source.name}
+            </span>
+          </div>
+          <button
+            onClick={onClose}
+            className="text-muted-foreground hover:text-danger text-[11px] tracking-widest border border-panel-border hover:border-danger px-2 py-1 transition-colors"
+          >
+            [ ESC ] CLOSE
+          </button>
+        </div>
+        <div className="relative bg-black aspect-video">
+          {embed ? (
+            <iframe
+              src={embed}
+              title={source.name}
+              className="absolute inset-0 w-full h-full"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+            />
+          ) : (
+            <div className="absolute inset-0 flex items-center justify-center text-xs text-danger tracking-widest">
+              ✕ INVALID URL
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
