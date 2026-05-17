@@ -36,31 +36,31 @@ const formSchema = z.object({
 function toEmbed(url: string): string | null {
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://www.youtube.com";
-  const make = (id: string) =>
-    `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=1&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(origin)}`;
+  const make = (id: string, muted = true) =>
+    `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(origin)}`;
   try {
     const u = new URL(url);
     const host = u.hostname.replace(/^www\./, "");
     if (host === "youtu.be") {
       const id = u.pathname.slice(1).split("/")[0];
-      return id ? make(id) : null;
+      return id ? make(id, true) : null;
     }
     if (host.endsWith("youtube.com") || host.endsWith("youtube-nocookie.com")) {
       if (u.pathname === "/watch") {
         const v = u.searchParams.get("v");
-        return v ? make(v) : null;
+        return v ? make(v, true) : null;
       }
       if (u.pathname.startsWith("/embed/")) {
         const id = u.pathname.split("/")[2];
-        return id ? make(id) : null;
+        return id ? make(id, true) : null;
       }
       if (u.pathname.startsWith("/live/")) {
         const id = u.pathname.split("/")[2];
-        return id ? make(id) : null;
+        return id ? make(id, true) : null;
       }
       if (u.pathname.startsWith("/shorts/")) {
         const id = u.pathname.split("/")[2];
-        return id ? make(id) : null;
+        return id ? make(id, true) : null;
       }
       // /@handle/live requires channel id we don't have; fall through
     }
@@ -68,6 +68,11 @@ function toEmbed(url: string): string | null {
     return null;
   }
   return null;
+}
+
+function toEmbedUnmuted(url: string): string | null {
+  const base = toEmbed(url);
+  return base ? base.replace("mute=1", "mute=0") : null;
 }
 
 function LivePage() {
