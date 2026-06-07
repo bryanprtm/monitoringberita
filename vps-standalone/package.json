@@ -1,0 +1,29 @@
+{
+  "name": "news-cc-backend",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Standalone backend untuk News Command Center (PostgreSQL + JWT + WebSocket). Tanpa Supabase.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "db:migrate": "node src/db/migrate.js",
+    "db:seed": "node src/db/seed.js",
+    "import:supabase": "node scripts/import-from-supabase.js"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^9.3.1",
+    "@fastify/cors": "^9.0.1",
+    "@fastify/static": "^7.0.4",
+    "@fastify/websocket": "^10.0.1",
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.33.0",
+    "fastify": "^4.28.1",
+    "jose": "^5.9.6",
+    "pg": "^8.13.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.24.2"
+  }
+}
