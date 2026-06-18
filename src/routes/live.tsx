@@ -226,9 +226,21 @@ function LivePage() {
                         loading="lazy"
                       />
                       <div className="absolute inset-0 flex items-end justify-end p-1 opacity-0 group-hover:opacity-100 transition-opacity bg-gradient-to-t from-black/60 to-transparent">
-                        <span className="text-[9px] tracking-widest text-cyan border border-cyan/60 px-1.5 py-0.5 bg-background/70">
-                          ⛶ EXPAND
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <a
+                            href={s.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-[9px] tracking-widest text-amber border border-amber/60 px-1.5 py-0.5 bg-background/70 hover:bg-amber hover:text-background transition-colors pointer-events-auto"
+                            title="Buka di YouTube (jika tampil pesan bot-check)"
+                          >
+                            YT ↗
+                          </a>
+                          <span className="text-[9px] tracking-widest text-cyan border border-cyan/60 px-1.5 py-0.5 bg-background/70">
+                            ⛶ EXPAND
+                          </span>
+                        </div>
                       </div>
                     </>
                   ) : (
