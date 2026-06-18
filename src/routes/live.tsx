@@ -37,7 +37,10 @@ function toEmbed(url: string): string | null {
   const origin =
     typeof window !== "undefined" ? window.location.origin : "https://www.youtube.com";
   const make = (id: string, muted = true) =>
-    `https://www.youtube-nocookie.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&origin=${encodeURIComponent(origin)}`;
+    // NOTE: gunakan youtube.com (bukan youtube-nocookie) supaya cookie session
+    // user ikut terkirim — ini menghindari pesan "Login untuk konfirmasi bukan bot"
+    // dari YouTube bot-detection yang muncul saat embed dimuat tanpa session.
+    `https://www.youtube.com/embed/${id}?autoplay=1&mute=${muted ? 1 : 0}&playsinline=1&rel=0&modestbranding=1&iv_load_policy=3&fs=1&origin=${encodeURIComponent(origin)}`;
   try {
     const u = new URL(url);
     const host = u.hostname.replace(/^www\./, "");
